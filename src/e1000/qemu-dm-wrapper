@@ -41,8 +41,30 @@ def enable_core_dumps():
 	setrlimit(RLIMIT_CORE, (limit, hardlimit))
 	return limit
 
+def e1000_enabled_os(argv):
+        import re
+        import os
+
+        res = re.search('((?:[A-Fa-f\d]{1,2}(?:[-:])?){6})', ' '.join(argv))
+        my_mac = res.group()
+
+        #print 'vif_uuid = xe vif-list MAC=' + my_mac + ' --minimal'
+        vif_uuid = os.popen('xe vif-list MAC=' + my_mac + ' --minimal').read().rstrip()
+
+        #print 'vm_uuid = xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid'
+        vm_uuid = os.popen('xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid').read().rstrip()
+
+        #print 'result = xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid
+        result = os.popen('xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid).read().rstrip()
+        if (result == 'e1000'):
+                return True
+        return False
+
 def main(argv):
 	import os
+
+	if e1000_enabled_os(argv):
+		argv = [arg.replace('rtl8139','e1000') for arg in argv]
 
 	qemu_env = os.environ
 	qemu_dm_list =[]
