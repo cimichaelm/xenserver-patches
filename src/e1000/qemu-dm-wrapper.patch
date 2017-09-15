@@ -1,8 +1,8 @@
 *** qemu-dm-wrapper-v7.0.master	2017-09-15 16:21:55.962027468 -0400
---- qemu-dm-wrapper	2017-09-15 16:29:44.413006391 -0400
+--- qemu-dm-wrapper	2017-09-15 16:47:13.224666406 -0400
 ***************
 *** 41,49 ****
---- 41,77 ----
+--- 41,78 ----
   	setrlimit(RLIMIT_CORE, (limit, hardlimit))
   	return limit
   
@@ -17,12 +17,13 @@
 +         # note: vif-list can return multiple values in the case of snapshots
 +         #
 +         #print 'vif_uuid = xe vif-list MAC=' + my_mac + ' --minimal'
-+         vif_uuid = os.popen('xe vif-list MAC=' + my_mac + ' --minimal').read().rstrip()
++         vif_uuid_list = os.popen('xe vif-list MAC=' + my_mac + ' --minimal').read().rstrip().split(',')
 + 
-+         #print 'vm_uuid = xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid'
-+         vm_uuid_list = os.popen('xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid').read().rstrip().split(',')
 + 
-+         for vm_uuid in vm_uuid_list:
++ 
++         for vif_uuid in vif_uuid_list:
++                 #print 'vm_uuid = xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid'
++                 vm_uuid = os.popen('xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid').read().rstrip()
 +                 #print 'result = xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid
 +                 result = os.popen('xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid).read().rstrip()
 +                 if result:
