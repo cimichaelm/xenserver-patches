@@ -1,34 +1,42 @@
---- /usr/libexec/xenopsd/qemu-dm-wrapper-orig	2014-01-08 00:39:55.000000000 -060
-+++ /usr/libexec/xenopsd/qemu-dm-wrapper	2014-01-08 00:41:59.000000000 -0600
-@@ -75,9 +75,31 @@
- 	setrlimit(RLIMIT_CORE, (limit, oldlimits[1]))
- 	return limit
- 
-+def e1000_enabled_os(argv):
-+        import re
-+        import os
-+
-+        res = re.search('((?:[A-Fa-f\d]{1,2}(?:[-:])?){6})', ' '.join(argv))
-+        my_mac = res.group()
-+
-+        #print 'vif_uuid = xe vif-list MAC=' + my_mac + ' --minimal'
-+        vif_uuid = os.popen('xe vif-list MAC=' + my_mac + ' --minimal').read().rstrip()
-+
-+        #print 'vm_uuid = xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid'
-+        vm_uuid = os.popen('xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid').read().rstrip()
-+
-+        #print 'result = xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid
-+        result = os.popen('xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid).read().rstrip()
-+        if (result == 'e1000'):
-+                return True
-+        return False
-+
- def main(argv):
- 	import os
- 
-+	if e1000_enabled_os(argv):
-+		argv = [arg.replace('rtl8139','e1000') for arg in argv]
-+
- 	qemu_env = os.environ
- 	qemu_dm = '/usr/lib/xen/bin/qemu-dm'
- 	domid = int(argv[1])
+*** qemu-dm-wrapper-v7.0.master	2017-09-15 16:21:55.962027468 -0400
+--- qemu-dm-wrapper	2017-09-15 16:29:44.413006391 -0400
+***************
+*** 41,49 ****
+--- 41,77 ----
+  	setrlimit(RLIMIT_CORE, (limit, hardlimit))
+  	return limit
+  
++ def e1000_enabled_os(argv):
++         import re
++         import os
++ 
++         res = re.search('((?:[A-Fa-f\d]{1,2}(?:[-:])?){6})', ' '.join(argv))
++         my_mac = res.group()
++ 
++         #
++         # note: vif-list can return multiple values in the case of snapshots
++         #
++         #print 'vif_uuid = xe vif-list MAC=' + my_mac + ' --minimal'
++         vif_uuid = os.popen('xe vif-list MAC=' + my_mac + ' --minimal').read().rstrip()
++ 
++         #print 'vm_uuid = xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid'
++         vm_uuid_list = os.popen('xe vif-param-get uuid=' + vif_uuid + ' param-name=vm-uuid').read().rstrip().split(',')
++ 
++         for vm_uuid in vm_uuid_list:
++                 #print 'result = xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid
++                 result = os.popen('xe vm-param-get param-name=other-config param-key=XenCenter.CustomFields.NicEmulation uuid=' + vm_uuid).read().rstrip()
++                 if result:
++                         if (result == 'e1000'):
++                                 return True
++                         
++         return False
++ 
+  def main(argv):
+  	import os
+  
++ 	if e1000_enabled_os(argv):
++ 		argv = [arg.replace('rtl8139','e1000') for arg in argv]
++ 
+  	qemu_env = os.environ
+  	qemu_dm_list =[]
+  	loc1 = '/usr/lib/xen/bin/qemu-dm'
